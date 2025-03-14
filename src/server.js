@@ -245,11 +245,31 @@ io.on('connection', (socket) => {
       return callback({ success: false, error: 'Invalid outcome' });
     }
     
-    if (amount <= 0) {
-      return callback({ success: false, error: 'Amount must be positive' });
+    // Check if this is a buy or sell operation
+    const isBuying = amount > 0;
+    const isSelling = amount < 0;
+    const absAmount = Math.abs(amount);
+    
+    if (absAmount === 0) {
+      return callback({ success: false, error: 'Amount cannot be zero' });
     }
     
-    if (user.balance < amount) {
+    // For selling, check if user has enough shares
+    if (isSelling) {
+      // Calculate user's position for this outcome
+      const userBetsForOutcome = user.bets.filter(
+        bet => bet.marketId === parseInt(marketId) && bet.outcomeIndex === outcomeIndex
+      );
+      
+      const userPosition = userBetsForOutcome.reduce((total, bet) => total + bet.amount, 0);
+      
+      if (userPosition < absAmount) {
+        return callback({ success: false, error: `Insufficient shares. You only have ${userPosition} shares of ${market.outcomes[outcomeIndex]}` });
+      }
+    }
+    
+    // For buying, check if user has enough balance
+    if (isBuying && user.balance < absAmount) {
       return callback({ success: false, error: 'Insufficient balance' });
     }
     
@@ -258,11 +278,12 @@ io.on('connection', (socket) => {
       market.quantities, 
       market.liquidityParameter, 
       outcomeIndex, 
-      amount
+      amount // Use the signed amount (positive for buying, negative for selling)
     );
     
-    if (cost > user.balance) {
-      return callback({ success: false, error: 'Insufficient balance for this bet' });
+    // For buying, check if user has enough balance to cover the cost
+    if (isBuying && cost > user.balance) {
+      return callback({ success: false, error: 'Insufficient balance for this trade' });
     }
     
     // Update market quantities
@@ -284,7 +305,7 @@ io.on('connection', (socket) => {
       market.priceHistory.shift();
     }
     
-    // Record the bet
+    // Record the bet/trade
     const bet = {
       id: Date.now(),
       userId,
@@ -292,13 +313,17 @@ io.on('connection', (socket) => {
       marketId,
       outcomeIndex,
       outcomeName: market.outcomes[outcomeIndex],
-      amount,
+      amount, // Store the signed amount
       cost,
       timestamp: new Date()
     };
     
     market.bets.push(bet);
     user.bets.push(bet);
+    
+    // Update user balance
+    // For buying: balance decreases by cost
+    // For selling: balance increases by |cost|
     user.balance -= cost;
     
     // Broadcast market update to all clients

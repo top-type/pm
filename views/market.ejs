@@ -117,16 +117,23 @@
             </div>
             
             <div class="mt-4">
-              <h4>Place a Bet</h4>
+              <h4>Trade</h4>
               <div class="alert alert-warning d-none" id="loginAlert">
-                Please login to place bets.
+                Please login to trade.
                 <button type="button" class="btn btn-sm btn-primary ms-2" id="loginBtnAlert">Login</button>
               </div>
               
               <div id="betForm" class="d-none">
                 <!-- User's current position in this market -->
                 <div class="row g-3 align-items-center">
-                  <div class="col-md-5">
+                  <div class="col-md-3">
+                    <label for="tradeTypeSelect" class="form-label">Action</label>
+                    <select class="form-select" id="tradeTypeSelect">
+                      <option value="buy">Buy</option>
+                      <option value="sell">Sell</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
                     <label for="outcomeSelect" class="form-label">Outcome</label>
                     <select class="form-select" id="outcomeSelect">
                       <% market.outcomes.forEach((outcome, index) => { %>
@@ -134,15 +141,16 @@
                       <% }); %>
                     </select>
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label for="betAmount" class="form-label">Amount</label>
                     <div class="input-group">
                       <span class="input-group-text">$</span>
                       <input type="number" class="form-control" id="betAmount" min="1" value="10">
                     </div>
                   </div>
-                  <div class="col-md-3 d-flex align-items-end">
-                    <button type="button" class="btn btn-primary w-100" id="placeBetBtn">Place Bet</button>
+                  <div class="col-md-2">
+                    <label class="form-label" style="visibility: hidden;">Execute</label>
+                    <button type="button" class="btn btn-primary w-100" id="placeBetBtn">Trade</button>
                   </div>
                 </div>
                 <div class="mt-2">
@@ -171,6 +179,7 @@
                     <th>Your Position</th>
                     <th>Total Cost</th>
                     <th>Avg. Cost/Share</th>
+                    <th>Unrealized P/L</th>
                   </tr>
                 </thead>
                 <tbody id="userPositionTableBody">

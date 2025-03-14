@@ -11,6 +11,7 @@ const usernameDisplay = document.getElementById('username');
 const balanceDisplay = document.getElementById('balance');
 const betForm = document.getElementById('betForm');
 const loginAlert = document.getElementById('loginAlert');
+const tradeTypeSelect = document.getElementById('tradeTypeSelect');
 const outcomeSelect = document.getElementById('outcomeSelect');
 const betAmount = document.getElementById('betAmount');
 const placeBetBtn = document.getElementById('placeBetBtn');
@@ -137,7 +138,8 @@ submitLoginBtn.addEventListener('click', () => {
 });
 
 if (outcomeSelect && betAmount) {
-  // Update cost estimate when bet amount or outcome changes
+  // Update cost estimate when trade type, bet amount or outcome changes
+  tradeTypeSelect.addEventListener('change', updateCostEstimate);
   outcomeSelect.addEventListener('change', updateCostEstimate);
   betAmount.addEventListener('input', updateCostEstimate);
   
@@ -178,31 +180,43 @@ function registerUser(username) {
 
 function placeBet() {
   if (!currentUser) {
-    alert('Please login to place a bet');
+    alert('Please login to trade');
     return;
   }
   
+  const tradeType = tradeTypeSelect.value;
   const outcomeIndex = parseInt(outcomeSelect.value);
   const amount = parseFloat(betAmount.value);
   
   if (isNaN(amount) || amount <= 0) {
-    alert('Please enter a valid bet amount');
+    alert('Please enter a valid amount');
     return;
   }
   
-  if (amount > currentUser.balance) {
+  // For buying, check user balance
+  if (tradeType === 'buy' && amount > currentUser.balance) {
     alert('Insufficient balance');
     return;
+  }
+  
+  // For selling, check if user has enough shares to sell
+  if (tradeType === 'sell') {
+    // Get user's position for this outcome
+    const userPosition = getUserPositionForOutcome(outcomeIndex);
+    if (userPosition < amount) {
+      alert(`You only have ${userPosition.toFixed(2)} shares of ${marketOutcomes[outcomeIndex]} to sell`);
+      return;
+    }
   }
   
   // Disable button to prevent double-clicks
   placeBetBtn.disabled = true;
   
-  // Place bet via Socket.io
+  // Place trade via Socket.io
   socket.emit('placeBet', {
     marketId,
     outcomeIndex,
-    amount
+    amount: tradeType === 'buy' ? amount : -amount // Negative amount for selling
   }, (response) => {
     placeBetBtn.disabled = false;
     
@@ -217,7 +231,8 @@ function placeBet() {
       }
       
       // Show success message
-      betCostEstimate.innerHTML = `<span class="text-success">Bet placed successfully! Cost: $${response.cost.toFixed(2)}</span>`;
+      const action = tradeType === 'buy' ? 'bought' : 'sold';
+      betCostEstimate.innerHTML = `<span class="text-success">Successfully ${action}! ${tradeType === 'buy' ? 'Cost' : 'Received'}: $${Math.abs(response.cost).toFixed(2)}</span>`;
       
       // Reset bet amount
       betAmount.value = '10';
@@ -226,14 +241,15 @@ function placeBet() {
       updateUserPosition();
     } else {
       // Show error message
-      alert('Failed to place bet: ' + response.error);
+      alert('Failed to execute trade: ' + response.error);
     }
   });
 }
 
 function updateCostEstimate() {
-  if (!outcomeSelect || !betAmount) return;
+  if (!outcomeSelect || !betAmount || !tradeTypeSelect) return;
   
+  const tradeType = tradeTypeSelect.value;
   const outcomeIndex = parseInt(outcomeSelect.value);
   const amount = parseFloat(betAmount.value);
   
@@ -243,9 +259,14 @@ function updateCostEstimate() {
   }
   
   // Calculate cost using LMSR
-  const cost = calculateCostDifference(quantities, liquidityParameter, outcomeIndex, amount);
-  
-  betCostEstimate.textContent = `Estimated cost: $${cost.toFixed(2)}`;
+  if (tradeType === 'buy') {
+    const cost = calculateCostDifference(quantities, liquidityParameter, outcomeIndex, amount);
+    betCostEstimate.textContent = `Estimated cost: $${cost.toFixed(2)}`;
+  } else {
+    // For selling, calculate how much the user will receive
+    const cost = calculateCostDifference(quantities, liquidityParameter, outcomeIndex, -amount);
+    betCostEstimate.textContent = `Estimated to receive: $${Math.abs(cost).toFixed(2)}`;
+  }
 }
 
 // LMSR (Logarithmic Market Scoring Rule) functions
@@ -434,6 +455,19 @@ function updateUserPosition() {
     
     userPositionTableBody.appendChild(row);
   });
+}
+
+// Helper function to get user's position for a specific outcome
+function getUserPositionForOutcome(outcomeIndex) {
+  if (!currentUser) return 0;
+  
+  // Get user's bets for this market and outcome
+  const userBetsForOutcome = currentUser.bets.filter(
+    bet => bet.marketId === marketId && bet.outcomeIndex === outcomeIndex
+  );
+  
+  // Sum up the amounts
+  return userBetsForOutcome.reduce((total, bet) => total + bet.amount, 0);
 }
 
 // Socket.io event handlers
