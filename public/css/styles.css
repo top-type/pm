@@ -1,0 +1,134 @@
+/* General Styles */
+body {
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+.navbar {
+  margin-bottom: 20px;
+}
+
+/* Card Styles */
+.card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: none;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Market Cards */
+.outcome-item {
+  margin-bottom: 10px;
+}
+
+.outcome-name {
+  font-weight: 500;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* Market Detail Page */
+.chart-container {
+  margin: 20px 0;
+}
+
+.probability-badge {
+  font-size: 0.9rem;
+}
+
+/* Bet Form */
+#betForm {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+#betCostEstimate {
+  font-style: italic;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .col-md-3 {
+    margin-top: 15px;
+  }
+}
+
+/* Animation for price updates */
+@keyframes highlight {
+  0% {
+    background-color: rgba(255, 255, 0, 0.5);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight {
+  animation: highlight 1.5s ease-out;
+}
+
+/* Custom button styles */
+.btn-primary {
+  background-color: #3498db;
+  border-color: #3498db;
+}
+
+.btn-primary:hover {
+  background-color: #2980b9;
+  border-color: #2980b9;
+}
+
+/* Progress bar customization */
+.progress {
+  height: 10px;
+  border-radius: 5px;
+}
+
+.progress-bar {
+  background-color: #3498db;
+}
+
+/* Table styles */
+.table th {
+  font-weight: 600;
+  border-top: none;
+}
+
+.table td, .table th {
+  padding: 0.75rem;
+  vertical-align: middle;
+}
+
+/* Modal customization */
+.modal-header {
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.modal-footer {
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+/* User Position Table */
+#userPositionTable {
+  margin-top: 10px;
+}
+
+#userPositionTable th {
+  background-color: #f8f9fa;
+}
+
+#userPositionTableBody tr {
+  transition: background-color 0.2s;
+}
+
+#userPositionTableBody tr:hover {
+  background-color: rgba(52, 152, 219, 0.1);
+} 
