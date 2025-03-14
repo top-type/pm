@@ -192,7 +192,7 @@
         
         <div class="card">
           <div class="card-header">
-            <h4 class="mb-0">Recent Bets</h4>
+            <h4 class="mb-0">Recent Trades</h4>
           </div>
           <div class="card-body">
             <div id="betsContainer">
@@ -203,8 +203,9 @@
                       <tr>
                         <th>User</th>
                         <th>Outcome</th>
+                        <th>Action</th>
                         <th>Amount</th>
-                        <th>Cost</th>
+                        <th>Cost/Proceeds</th>
                         <th>Time</th>
                       </tr>
                     </thead>
@@ -213,8 +214,9 @@
                         <tr>
                           <td><%= bet.username %></td>
                           <td><%= market.outcomes[bet.outcomeIndex] %></td>
-                          <td><%= bet.amount %></td>
-                          <td>$<%= bet.cost.toFixed(2) %></td>
+                          <td><%= bet.amount > 0 ? 'Buy' : 'Sell' %></td>
+                          <td><%= Math.abs(bet.amount) %></td>
+                          <td>$<%= Math.abs(bet.cost).toFixed(2) %></td>
                           <td><%= new Date(bet.timestamp).toLocaleString() %></td>
                         </tr>
                       <% }); %>
@@ -223,7 +225,7 @@
                 </div>
               <% } else { %>
                 <div class="alert alert-info">
-                  No bets have been placed yet. Be the first to bet!
+                  No trades have been placed yet. Be the first to trade!
                 </div>
               <% } %>
             </div>

@@ -442,7 +442,24 @@ function updateUserPosition() {
     const outcome = marketOutcomes[outcomeIndex];
     const currentPrice = prices[outcomeIndex];
     const probability = (currentPrice * 100).toFixed(2);
+    
+    // Skip positions with zero or negative shares
+    if (position.totalAmount <= 0) return;
+    
     const avgCostPerShare = (position.totalCost / position.totalAmount).toFixed(2);
+    
+    // Calculate unrealized profit/loss
+    // Current value = current price * number of shares
+    // Cost basis = total cost paid
+    // P/L = current value - cost basis
+    const currentValue = calculateShareValue(position.totalAmount, outcomeIndex);
+    const unrealizedPL = currentValue - position.totalCost;
+    const plPercentage = ((unrealizedPL / position.totalCost) * 100).toFixed(2);
+    
+    // Format P/L with color and percentage
+    const plClass = unrealizedPL >= 0 ? 'text-success' : 'text-danger';
+    const plSign = unrealizedPL >= 0 ? '+' : '';
+    const plFormatted = `<span class="${plClass}">${plSign}$${unrealizedPL.toFixed(2)} (${plSign}${plPercentage}%)</span>`;
     
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -451,10 +468,28 @@ function updateUserPosition() {
       <td>${position.totalAmount} shares</td>
       <td>$${position.totalCost.toFixed(2)}</td>
       <td>$${avgCostPerShare}</td>
+      <td>${plFormatted}</td>
     `;
     
     userPositionTableBody.appendChild(row);
   });
+}
+
+// Calculate the current value of shares for an outcome
+function calculateShareValue(shares, outcomeIndex) {
+  if (shares <= 0) return 0;
+  
+  // Create a hypothetical scenario where we sell these shares
+  // This gives us the current market value
+  const hypotheticalCost = calculateCostDifference(
+    quantities, 
+    liquidityParameter, 
+    outcomeIndex, 
+    -shares
+  );
+  
+  // The value is the negative of the cost (since selling gives you money)
+  return -hypotheticalCost;
 }
 
 // Helper function to get user's position for a specific outcome
@@ -514,6 +549,9 @@ socket.on('marketUpdate', (data) => {
       if (noBetsAlert) {
         // Replace the "no bets" message with a table
         const betsContainer = document.getElementById('betsContainer');
+        const isBuy = data.newBet.amount > 0;
+        const action = isBuy ? 'Buy' : 'Sell';
+        
         betsContainer.innerHTML = `
           <div class="table-responsive">
             <table class="table table-hover">
@@ -521,8 +559,9 @@ socket.on('marketUpdate', (data) => {
                 <tr>
                   <th>User</th>
                   <th>Outcome</th>
+                  <th>Action</th>
                   <th>Amount</th>
-                  <th>Cost</th>
+                  <th>Cost/Proceeds</th>
                   <th>Time</th>
                 </tr>
               </thead>
@@ -530,8 +569,9 @@ socket.on('marketUpdate', (data) => {
                 <tr class="highlight">
                   <td>${data.newBet.username}</td>
                   <td>${marketOutcomes[data.newBet.outcomeIndex]}</td>
-                  <td>${data.newBet.amount}</td>
-                  <td>$${data.newBet.cost.toFixed(2)}</td>
+                  <td>${action}</td>
+                  <td>${Math.abs(data.newBet.amount)}</td>
+                  <td>$${Math.abs(data.newBet.cost).toFixed(2)}</td>
                   <td>${new Date(data.newBet.timestamp).toLocaleString()}</td>
                 </tr>
               </tbody>
@@ -550,11 +590,15 @@ function addBetToTable(bet) {
   
   // Create new row
   const row = document.createElement('tr');
+  const isBuy = bet.amount > 0;
+  const action = isBuy ? 'Buy' : 'Sell';
+  
   row.innerHTML = `
     <td>${bet.username}</td>
     <td>${marketOutcomes[bet.outcomeIndex]}</td>
-    <td>${bet.amount}</td>
-    <td>$${bet.cost.toFixed(2)}</td>
+    <td>${action}</td>
+    <td>${Math.abs(bet.amount)}</td>
+    <td>$${Math.abs(bet.cost).toFixed(2)}</td>
     <td>${new Date(bet.timestamp).toLocaleString()}</td>
   `;
   
