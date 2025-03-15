@@ -43,7 +43,7 @@ const priceHistoryChart = new Chart(priceCtx, {
   type: 'line',
   data: {
     datasets: marketOutcomes.map((outcome, index) => ({
-      label: outcome,
+      label: outcome + (isScalar && index === 0 ? ' (Implied Value)' : ''),
       data: [{ x: new Date(), y: prices[index] * 100 }],
       borderColor: generateColors(marketOutcomes.length)[index],
       backgroundColor: 'transparent',
@@ -97,6 +97,50 @@ const priceHistoryChart = new Chart(priceCtx, {
     }
   }
 });
+
+// For scalar markets, add an additional dataset for the implied value
+if (isScalar) {
+  // Add a secondary y-axis for the implied value
+  priceHistoryChart.options.scales.y1 = {
+    type: 'linear',
+    display: true,
+    position: 'right',
+    title: {
+      display: true,
+      text: 'Implied Value'
+    },
+    min: scalarMin,
+    max: scalarMax,
+    grid: {
+      drawOnChartArea: false
+    }
+  };
+  
+  // Add a dataset for the implied value
+  priceHistoryChart.data.datasets.push({
+    label: 'Implied Value',
+    data: [{ 
+      x: new Date(), 
+      y: calculateImpliedValue(prices[0]) 
+    }],
+    borderColor: '#ff9800',
+    backgroundColor: 'transparent',
+    tension: 0.1,
+    pointRadius: 2,
+    pointHoverRadius: 5,
+    yAxisID: 'y1'
+  });
+  
+  // Update tooltip to show the implied value
+  priceHistoryChart.options.plugins.tooltip.callbacks.label = function(context) {
+    if (context.dataset.label === 'Implied Value') {
+      return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+    }
+    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+  };
+  
+  priceHistoryChart.update();
+}
 
 // Check for stored user
 const storedUser = localStorage.getItem('predictionMarketUser');
@@ -364,6 +408,28 @@ function updatePricesUI() {
     badge.classList.add('highlight');
     setTimeout(() => badge.classList.remove('highlight'), 1500);
   });
+  
+  // For scalar markets, update the implied value
+  if (isScalar) {
+    const impliedValue = calculateImpliedValue(prices[0]);
+    
+    // Update the implied value in the chart
+    if (priceHistoryChart.data.datasets.length > marketOutcomes.length) {
+      const impliedValueDataset = priceHistoryChart.data.datasets[marketOutcomes.length];
+      const lastPoint = impliedValueDataset.data[impliedValueDataset.data.length - 1];
+      
+      if (lastPoint && lastPoint.x.getTime() !== new Date().getTime()) {
+        impliedValueDataset.data.push({
+          x: new Date(),
+          y: impliedValue
+        });
+      } else if (lastPoint) {
+        lastPoint.y = impliedValue;
+      }
+      
+      priceHistoryChart.update();
+    }
+  }
 }
 
 // Update price history chart with new data
@@ -374,6 +440,22 @@ function updatePriceHistoryChart(history) {
   priceHistoryChart.data.datasets.forEach((dataset, index) => {
     // Only process datasets for outcomes that exist in this market
     if (index >= marketOutcomes.length) {
+      // This is the implied value dataset for scalar markets
+      if (isScalar && index === marketOutcomes.length) {
+        dataset.data = history.map(point => {
+          if (!point.prices || point.prices.length === 0) {
+            return {
+              x: new Date(point.timestamp),
+              y: 0
+            };
+          }
+          
+          return {
+            x: new Date(point.timestamp),
+            y: calculateImpliedValue(point.prices[0])
+          };
+        });
+      }
       return;
     }
     
@@ -632,4 +714,12 @@ updatePriceHistoryChart(priceHistory);
 // Initialize user position if user is logged in
 if (currentUser) {
   updateUserPosition();
+}
+
+// Calculate the implied value for a scalar market based on the LONG probability
+function calculateImpliedValue(longProbability) {
+  if (!isScalar) return 0;
+  
+  // The implied value is a linear interpolation between min and max based on the LONG probability
+  return scalarMin + (scalarMax - scalarMin) * longProbability;
 } 

@@ -126,7 +126,7 @@ app.get('/market/:id', (req, res) => {
 
 // API routes
 app.post('/api/markets', (req, res) => {
-  const { title, description, outcomes, liquidityParameter } = req.body;
+  const { title, description, outcomes, liquidityParameter, isScalar, scalarMin, scalarMax } = req.body;
   
   if (!title || !description || !outcomes || !liquidityParameter) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -136,6 +136,18 @@ app.post('/api/markets', (req, res) => {
   console.log('Title:', title);
   console.log('Outcomes:', outcomes);
   console.log('Liquidity Parameter:', liquidityParameter);
+  
+  if (isScalar) {
+    console.log('Scalar Market Range:', scalarMin, 'to', scalarMax);
+    
+    if (scalarMin === undefined || scalarMax === undefined || scalarMin >= scalarMax) {
+      return res.status(400).json({ error: 'Invalid scalar range' });
+    }
+    
+    if (outcomes.length !== 2 || outcomes[0] !== 'LONG' || outcomes[1] !== 'SHORT') {
+      return res.status(400).json({ error: 'Scalar markets must have exactly two outcomes: LONG and SHORT' });
+    }
+  }
   
   const marketId = db.nextMarketId++;
   const outcomeCount = outcomes.length;
@@ -168,7 +180,8 @@ app.post('/api/markets', (req, res) => {
     prices: initialPrices
   });
   
-  db.markets[marketId] = {
+  // Create the market object
+  const market = {
     id: marketId,
     title,
     description,
@@ -179,6 +192,15 @@ app.post('/api/markets', (req, res) => {
     bets: [],
     priceHistory
   };
+  
+  // Add scalar market properties if applicable
+  if (isScalar) {
+    market.isScalar = true;
+    market.scalarMin = scalarMin;
+    market.scalarMax = scalarMax;
+  }
+  
+  db.markets[marketId] = market;
   
   console.log('Market created:', db.markets[marketId]);
   

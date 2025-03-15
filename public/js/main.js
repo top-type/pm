@@ -13,6 +13,9 @@ const createMarketBtn = document.getElementById('createMarketBtn');
 const addOutcomeBtn = document.getElementById('addOutcomeBtn');
 const outcomesContainer = document.getElementById('outcomesContainer');
 const marketsContainer = document.getElementById('marketsContainer');
+const marketTypeSelect = document.getElementById('marketType');
+const categoricalOptions = document.getElementById('categoricalOptions');
+const scalarOptions = document.getElementById('scalarOptions');
 
 // User data
 let currentUser = null;
@@ -59,6 +62,27 @@ if (addOutcomeBtn) {
   addOutcomeBtn.addEventListener('click', addOutcomeField);
 }
 
+// Toggle between categorical and scalar market options
+if (marketTypeSelect) {
+  // Function to toggle market options based on selected type
+  const toggleMarketOptions = () => {
+    const selectedType = marketTypeSelect.value;
+    if (selectedType === 'categorical') {
+      categoricalOptions.classList.remove('d-none');
+      scalarOptions.classList.add('d-none');
+    } else {
+      categoricalOptions.classList.add('d-none');
+      scalarOptions.classList.remove('d-none');
+    }
+  };
+  
+  // Initialize the form based on the default selection
+  toggleMarketOptions();
+  
+  // Add event listener for changes
+  marketTypeSelect.addEventListener('change', toggleMarketOptions);
+}
+
 // Add event listeners to remove outcome buttons
 document.querySelectorAll('.remove-outcome').forEach(button => {
   button.addEventListener('click', function() {
@@ -99,14 +123,54 @@ function createMarket() {
   const title = document.getElementById('marketTitle').value.trim();
   const description = document.getElementById('marketDescription').value.trim();
   const liquidityParameter = document.getElementById('liquidityParameter').value;
+  const marketType = document.getElementById('marketType').value;
   
-  // Get outcomes
-  const outcomeInputs = document.querySelectorAll('.outcome-input');
-  const outcomes = Array.from(outcomeInputs).map(input => input.value.trim()).filter(val => val);
+  let outcomes = [];
+  let isScalar = false;
+  let scalarMin, scalarMax;
   
-  if (!title || !description || outcomes.length < 2 || !liquidityParameter) {
-    alert('Please fill in all required fields and provide at least two outcomes.');
+  if (marketType === 'categorical') {
+    // Get outcomes for categorical market
+    const outcomeInputs = document.querySelectorAll('.outcome-input');
+    outcomes = Array.from(outcomeInputs).map(input => input.value.trim()).filter(val => val);
+    
+    if (outcomes.length < 2) {
+      alert('Please provide at least two outcomes for a categorical market.');
+      return;
+    }
+  } else {
+    // Get range for scalar market
+    scalarMin = parseFloat(document.getElementById('scalarMin').value);
+    scalarMax = parseFloat(document.getElementById('scalarMax').value);
+    
+    if (isNaN(scalarMin) || isNaN(scalarMax) || scalarMin >= scalarMax) {
+      alert('Please provide a valid range where minimum is less than maximum.');
+      return;
+    }
+    
+    // For scalar markets, we create two outcomes: LONG and SHORT
+    outcomes = ['LONG', 'SHORT'];
+    isScalar = true;
+  }
+  
+  if (!title || !description || !liquidityParameter) {
+    alert('Please fill in all required fields.');
     return;
+  }
+  
+  // Create market data object
+  const marketData = {
+    title,
+    description,
+    outcomes,
+    liquidityParameter
+  };
+  
+  // Add scalar market properties if applicable
+  if (isScalar) {
+    marketData.isScalar = true;
+    marketData.scalarMin = scalarMin;
+    marketData.scalarMax = scalarMax;
   }
   
   // Create market via API
@@ -115,12 +179,7 @@ function createMarket() {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      title,
-      description,
-      outcomes,
-      liquidityParameter
-    })
+    body: JSON.stringify(marketData)
   })
   .then(response => response.json())
   .then(data => {

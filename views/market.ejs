@@ -53,6 +53,9 @@
             <div class="text-muted mb-3">
               Created: <%= new Date(market.created).toLocaleString() %>
               <span class="ms-3">Liquidity Parameter (b): <%= market.liquidityParameter %></span>
+              <% if (market.isScalar) { %>
+                <span class="ms-3">Range: <%= market.scalarMin %> to <%= market.scalarMax %></span>
+              <% } %>
             </div>
             
             <h4>Price History</h4>
@@ -61,6 +64,13 @@
             </div>
             
             <h4 class="mt-4">Current Probabilities</h4>
+            <% if (market.isScalar) { %>
+              <div class="alert alert-info mb-3">
+                This is a scalar market with range from <%= market.scalarMin %> to <%= market.scalarMax %>. 
+                LONG tokens pay more as the final value approaches <%= market.scalarMax %>, 
+                while SHORT tokens pay more as the final value approaches <%= market.scalarMin %>.
+              </div>
+            <% } %>
             <div class="row">
               <% market.outcomes.forEach((outcome, index) => { %>
                 <% 
@@ -99,7 +109,14 @@
                 <div class="col-md-4 mb-3">
                   <div class="card">
                     <div class="card-body">
-                      <h5 class="card-title"><%= outcome %></h5>
+                      <h5 class="card-title">
+                        <%= outcome %>
+                        <% if (market.isScalar) { %>
+                          <small class="text-muted">
+                            (<%= outcome === 'LONG' ? 'Favors higher values' : 'Favors lower values' %>)
+                          </small>
+                        <% } %>
+                      </h5>
                       <div class="progress mb-2">
                         <div class="progress-bar" role="progressbar" 
                              style="width: <%= probability %>%" 
@@ -272,6 +289,14 @@
     const initialQuantities = <%- JSON.stringify(market.quantities) %>;
     const liquidityParameter = <%= market.liquidityParameter %>;
     const initialPriceHistory = <%- JSON.stringify(market.priceHistory) %>;
+    const isScalar = <%= market.isScalar ? 'true' : 'false' %>;
+    <% if (market.isScalar) { %>
+    const scalarMin = <%= market.scalarMin %>;
+    const scalarMax = <%= market.scalarMax %>;
+    <% } else { %>
+    const scalarMin = 0;
+    const scalarMax = 0;
+    <% } %>
   </script>
   <script src="/js/market.js"></script>
 </body>
